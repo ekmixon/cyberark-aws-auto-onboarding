@@ -59,21 +59,17 @@ def get_ec2_details(instance_id, ec2_object, event_account_id):
         raise e
 
     #  We take the instance address in the order of: public dns -> public ip -> private ip ##
-    if instance_resource.private_ip_address:
-        address = instance_resource.private_ip_address
-    else:  # unable to retrieve address from aws
-        address = None
-
+    address = instance_resource.private_ip_address or None
     if not image_description:
         raise Exception("Determining OS type failed")
 
-    details = dict()
-    details['key_name'] = instance_resource.key_name
-    details['address'] = address
-    details['platform'] = instance_resource.platform
-    details['image_description'] = image_description
-    details['aws_account_id'] = event_account_id
-    return details
+    return {
+        'key_name': instance_resource.key_name,
+        'address': address,
+        'platform': instance_resource.platform,
+        'image_description': image_description,
+        'aws_account_id': event_account_id,
+    }
 
 
 # Check on DynamoDB if instance exists
@@ -90,10 +86,12 @@ def get_instance_data_from_dynamo_table(instance_id):
         return False
     # DynamoDB "Item" response: {'Address': {'S': 'xxx.xxx.xxx.xxx'}, 'instance_id': {'S': 'i-xxxxxyyyyzzz'},
     #               'Status': {'S': 'on-boarded'}, 'Error': {'S': 'Some Error'}}
-    if 'Item' in dynamo_response:
-        if dynamo_response["Item"]["InstanceId"]["S"] == instance_id:
-            logger.info(f'{instance_id} exists in DynamoDB')
-            return dynamo_response["Item"]
+    if (
+        'Item' in dynamo_response
+        and dynamo_response["Item"]["InstanceId"]["S"] == instance_id
+    ):
+        logger.info(f'{instance_id} exists in DynamoDB')
+        return dynamo_response["Item"]
     return False
 
 
@@ -111,10 +109,20 @@ def get_params_from_param_store():
     AOB_DEBUG_LEVEL = "AOB_Debug_Level"
 
     lambda_client = boto3.client('lambda')
-    lambda_request_data = dict()
-    lambda_request_data["Parameters"] = [UNIX_SAFE_NAME_PARAM, WINDOWS_SAFE_NAME_PARAM, VAULT_USER_PARAM, PVWA_IP_PARAM,
-                                         AWS_KEYPAIR_SAFE, VAULT_PASSWORD_PARAM_, PVWA_VERIFICATION_KEY, AOB_MODE,
-                                         AOB_DEBUG_LEVEL]
+    lambda_request_data = {
+        "Parameters": [
+            UNIX_SAFE_NAME_PARAM,
+            WINDOWS_SAFE_NAME_PARAM,
+            VAULT_USER_PARAM,
+            PVWA_IP_PARAM,
+            AWS_KEYPAIR_SAFE,
+            VAULT_PASSWORD_PARAM_,
+            PVWA_VERIFICATION_KEY,
+            AOB_MODE,
+            AOB_DEBUG_LEVEL,
+        ]
+    }
+
     try:
         response = lambda_client.invoke(FunctionName='TrustMechanism',
                                         InvocationType='RequestResponse',
@@ -148,9 +156,17 @@ def get_params_from_param_store():
                 pvwa_verification_key = ''
         else:
             continue
-    store_parameters_class = StoreParameters(unix_safe_name, windows_safe_name, vault_username, vault_password, pvwa_ip,
-                                             key_pair_safe_name, pvwa_verification_key, aob_mode, debug_level)
-    return store_parameters_class
+    return StoreParameters(
+        unix_safe_name,
+        windows_safe_name,
+        vault_username,
+        vault_password,
+        pvwa_ip,
+        key_pair_safe_name,
+        pvwa_verification_key,
+        aob_mode,
+        debug_level,
+    )
 
 
 def put_instance_to_dynamo_table(instance_id, ip_address, on_board_status, on_board_error="None", log_name="None"):
@@ -220,15 +236,14 @@ def get_session_from_dynamo(sessions_table_lock_client=False):
     random_session_number = str(random.randint(1, 100))  # A number between 1 and 100
 
     try:
-        for i in range(0, 20):
-
-            lock_response = sessions_table_lock_client.acquire(random_session_number, timeout)
-            if lock_response:  # no lock on connection number, return it
+        for _ in range(20):
+            if lock_response := sessions_table_lock_client.acquire(
+                random_session_number, timeout
+            ):
                 logger.info("Successfully retrieved session from DynamoDB")
                 return random_session_number, sessions_table_lock_client.guid
-            else:  # connection number is locked, retry in 5 seconds
+            else:
                 time.sleep(5)
-                continue
         #  if reached here, 20 retries with 5 seconds between retry - ended
         logger.info("Connection limit has been reached")
         return False, ""

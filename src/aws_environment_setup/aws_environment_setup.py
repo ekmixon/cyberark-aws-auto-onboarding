@@ -132,21 +132,34 @@ def lambda_handler(event, context):
             is_aws_account_created = create_key_pair_in_vault(pvwa_integration_class, pvwa_session_id, request_key_pair_name,
                                                               aws_key_pair, request_pvwa_ip, request_key_pair_safe,
                                                               request_aws_account_id, request_aws_region_name)
-            if not is_aws_account_created:
-                return cfnresponse.send(event, context, cfnresponse.FAILED,
-                                        f"Failed to create Key Pair {request_key_pair_name} in safe " \
-                                        f"{request_key_pair_safe}. see detailed error in logs", {}, physical_resource_id)
-
-            return cfnresponse.send(event, context, cfnresponse.SUCCESS, None, {}, physical_resource_id)
+            return (
+                cfnresponse.send(
+                    event,
+                    context,
+                    cfnresponse.SUCCESS,
+                    None,
+                    {},
+                    physical_resource_id,
+                )
+                if is_aws_account_created
+                else cfnresponse.send(
+                    event,
+                    context,
+                    cfnresponse.FAILED,
+                    f"Failed to create Key Pair {request_key_pair_name} in safe "
+                    f"{request_key_pair_safe}. see detailed error in logs",
+                    {},
+                    physical_resource_id,
+                )
+            )
 
     except Exception as e:
         logger.error(f"Exception occurred:{str(e)}:")
         return cfnresponse.send(event, context, cfnresponse.FAILED, f"Exception occurred: {str(e)}", {})
 
     finally:
-        if 'pvwa_session_id' in locals():  # pvwa_session_id has been declared
-            if pvwa_session_id:  # Logging off the session in case of successful logon
-                pvwa_integration_class.logoff_pvwa(pvwa_url, pvwa_session_id)
+        if 'pvwa_session_id' in locals() and pvwa_session_id:
+            pvwa_integration_class.logoff_pvwa(pvwa_url, pvwa_session_id)
 
 
 # Creating a safe, if a failure occur, retry 3 time, wait 10 sec. between retries
@@ -169,7 +182,7 @@ def create_safe(pvwa_integration_class, safe_name, cpm_name, pvwa_ip, session_id
             }}
             """
 
-    for i in range(0, 3):
+    for i in range(3):
         create_safe_rest_response = pvwa_integration_class.call_rest_api_post(create_safe_url, data, header)
 
         if create_safe_rest_response.status_code == requests.codes.conflict:
@@ -339,5 +352,4 @@ def get_aob_mode():
     ssm_parameter = ssm.get_parameter(
         Name='AOB_mode'
     )
-    aob_mode = ssm_parameter['Parameter']['Value']
-    return aob_mode
+    return ssm_parameter['Parameter']['Value']

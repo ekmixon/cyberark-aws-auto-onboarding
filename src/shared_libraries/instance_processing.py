@@ -119,11 +119,13 @@ def create_instance(instance_id, instance_details, store_parameters_class, log_n
 
     search_account_pattern = f"{instance_details['address']},{instance_username}"
     print('retrieve_account_id_from_account_name')
-    existing_instance_account_id = pvwa_api_calls.retrieve_account_id_from_account_name(session_token, search_account_pattern,
-                                                                                        safe_name,
-                                                                                        instance_id,
-                                                                                        store_parameters_class.pvwa_url)
-    if existing_instance_account_id:  # account already exist and managed on vault, no need to create it again
+    if existing_instance_account_id := pvwa_api_calls.retrieve_account_id_from_account_name(
+        session_token,
+        search_account_pattern,
+        safe_name,
+        instance_id,
+        store_parameters_class.pvwa_url,
+    ):
         logger.info("Account already exists in vault")
         aws_services.put_instance_to_dynamo_table(instance_id, instance_details['address'], OnBoardStatus.on_boarded, "None",
                                                   log_name)
@@ -154,19 +156,17 @@ def create_instance(instance_id, instance_details, store_parameters_class, log_n
 def get_os_distribution_user(image_description):
     logger.trace(image_description, caller_name='get_os_distribution_user')
     if "centos" in image_description.lower():
-        linux_username = "centos"
+        return "centos"
     elif "ubuntu" in image_description.lower():
-        linux_username = "ubuntu"
+        return "ubuntu"
     elif "debian" in image_description.lower():
-        linux_username = "admin"
+        return "admin"
     elif "fedora" in image_description.lower():
-        linux_username = "fedora"
+        return "fedora"
     elif "opensuse" in image_description.lower():
-        linux_username = "root"
+        return "root"
     else:
-        linux_username = "ec2-user"
-
-    return linux_username
+        return "ec2-user"
 
 
 class OnBoardStatus:

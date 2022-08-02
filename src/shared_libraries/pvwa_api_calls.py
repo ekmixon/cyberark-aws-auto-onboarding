@@ -147,7 +147,11 @@ def retrieve_account_id_from_account_name(session, account_name, safe_name, inst
 
 def filter_get_accounts_result(parsed_json_response, instance_id):
     logger.trace(parsed_json_response, instance_id, caller_name='filter_get_accounts_result')
-    for element in parsed_json_response:
-        if instance_id in element['name']:
-            return element['id']
-    return False
+    return next(
+        (
+            element['id']
+            for element in parsed_json_response
+            if instance_id in element['name']
+        ),
+        False,
+    )

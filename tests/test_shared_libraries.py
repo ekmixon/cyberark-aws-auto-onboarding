@@ -434,18 +434,21 @@ def mock_requests_response(code=int, json_response=None):
 
 class EC2Details:
     def __init__(self):
-        self.details = dict()
-        self.details['key_name'] = 'myKey'
-        self.details['platform'] = 'windows'
-        self.details['image_description'] = 'windows'
-        self.details['aws_account_id'] = '199183736223'
-        self.details['address'] = '192.192.192.192'
-        self.instance_data = {}
-        string = {}
-        string['S'] = '192.192.192.192'
-        self.instance_data["Address"] = string
-        self.instance_data['platform'] = 'Linix'
-        self.instance_data['image_description'] = 'Very Linix'
+        self.details = {
+            'key_name': 'myKey',
+            'platform': 'windows',
+            'image_description': 'windows',
+            'aws_account_id': '199183736223',
+            'address': '192.192.192.192',
+        }
+
+        string = {'S': '192.192.192.192'}
+        self.instance_data = {
+            "Address": string,
+            'platform': 'Linix',
+            'image_description': 'Very Linix',
+        }
+
         self.sp_class = aws_services.StoreParameters('unix', 'windows', 'user', 'password', '1.1.1.1', 'kp', 'cert',
                                                      'POC', 'trace')
         self.sp_class.pvwa_url = 'https://cyberarkaob.cyberark'

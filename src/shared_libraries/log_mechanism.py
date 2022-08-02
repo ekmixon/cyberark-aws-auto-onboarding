@@ -10,14 +10,14 @@ class LogMechanism:
 
 
     def info(self, message, debug_level=DEBUG_LEVEL_INFO):
-        message = str(message)
         if debug_level == self.debug_level.lower() or self.debug_level.lower() == 'trace':
+            message = str(message)
             print(f'[INFO] {message}')
 
 
     def error(self, message, debug_level=DEBUG_LEVEL_INFO):
-        message = str(message)
         if debug_level == self.debug_level.lower() or self.debug_level.lower() == 'trace':
+            message = str(message)
             print(f'[ERROR] {message}')
 
 
@@ -32,5 +32,4 @@ def get_debug_level():
     ssm_parameter = ssm.get_parameter(
         Name='AOB_Debug_Level'
     )
-    aob_debug_level = ssm_parameter['Parameter']['Value']
-    return aob_debug_level
+    return ssm_parameter['Parameter']['Value']

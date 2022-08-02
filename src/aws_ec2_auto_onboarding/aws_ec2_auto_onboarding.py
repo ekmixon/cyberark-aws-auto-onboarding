@@ -38,7 +38,7 @@ def lambda_handler(event, context):
     try:
         event_region = data["region"]
         solution_account_id = context.invoked_function_arn.split(':')[4]
-        log_name = context.log_stream_name if context.log_stream_name else "None"
+        log_name = context.log_stream_name or "None"
     except Exception as e:
         logger.error(f"Error on retrieving Event Region from Event Message. Error: {e}")
     elasticity_function(instance_id, action_type, event_account_id, event_region, solution_account_id, log_name)
@@ -81,9 +81,8 @@ def elasticity_function(instance_id, action_type, event_account_id, event_region
         if store_parameters_class.aob_mode == 'Production':
             # Save PVWA Verification key in /tmp folder
             logger.info('Saving verification key')
-            crt = open("/tmp/server.crt", "w+")
-            crt.write(store_parameters_class.pvwa_verification_key)
-            crt.close()
+            with open("/tmp/server.crt", "w+") as crt:
+                crt.write(store_parameters_class.pvwa_verification_key)
         pvwa_connection_number, session_guid = aws_services.get_session_from_dynamo()
         if not pvwa_connection_number:
             return

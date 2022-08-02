@@ -43,5 +43,4 @@ def decrypt_password(instance_password_data):
     passwd = base64.b64decode(instance_password_data)
     with open ("/tmp/pemValue.pem", 'r') as f:
         private = rsa.PrivateKey.load_pkcs1(f.read())
-    decrypted_password = rsa.decrypt(passwd,private).decode("utf-8")
-    return decrypted_password
+    return rsa.decrypt(passwd,private).decode("utf-8")
